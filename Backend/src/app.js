@@ -2,21 +2,55 @@ const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
 
+const { errorMiddleware } = require("./middlewares/errorMiddleware");
+const authRouter = require("./routes/auth.routes");
+
 const app = express();
 
-// Middlewares
+// --------------------
+// 🔹 Middlewares
+// --------------------
+
+// Body Parser
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Cookie Parser
 app.use(cookieParser());
 
-// CORS setup (frontend connect karne ke liye)
+// CORS (Frontend connection)
 app.use(
   cors({
     origin: process.env.FRONTEND_URL,
     credentials: true,
-  })
+  }),
 );
 
+// --------------------
+// 🔹 Routes
+// --------------------
 
+// Health Check Route
+app.get("/", (req, res) => {
+  res.status(200).send("API is running 🚀");
+});
+
+// Auth Routes
+app.use("/api/v1/auth", authRouter);
+
+// --------------------
+// 🔹 404 Handler
+// --------------------
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: "Route Not Found ❌",
+  });
+});
+
+// --------------------
+// 🔹 Error Middleware (ALWAYS LAST)
+// --------------------
+app.use(errorMiddleware);
 
 module.exports = app;
