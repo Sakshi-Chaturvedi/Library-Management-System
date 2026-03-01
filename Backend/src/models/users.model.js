@@ -94,3 +94,6 @@ userSchema.methods.generateToken = function () {
   });
 };
 
+const userModel = mongoose.model("userlibrary", userSchema);
+
+module.exports = userModel;
