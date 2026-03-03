@@ -1,28 +1,34 @@
-const nodemailer = require("nodemailer");
+require("dotenv").config();
+const SibApiV3Sdk = require("sib-api-v3-sdk");
+
+const defaultClient = SibApiV3Sdk.ApiClient.instance;
+const apiKey = defaultClient.authentications["api-key"];
+apiKey.apiKey = process.env.BREVO_API_KEY;
+
+const apiInstance = new SibApiV3Sdk.TransactionalEmailsApi();
 
 const sendEmail = async ({ email, subject, message }) => {
   try {
-    const transporter = nodemailer.createTransport({
-      service: "gmail", // easy setup
-      auth: {
-        user: process.env.SMTP_EMAIL,
-        pass: process.env.SMTP_PASSWORD,
+    const sendSmtpEmail = {
+      sender: {
+        email: "whoizsakshi@gmail.com",
+        name: "Library App",
       },
-    });
-
-    const mailOptions = {
-      from: `Library Management <${process.env.SMTP_EMAIL}>`,
-      to: email,
+      to: [
+        {
+          email: email,
+        },
+      ],
       subject: subject,
-      html: message,
+      htmlContent: message,
     };
 
-    await transporter.sendMail(mailOptions);
+    await apiInstance.sendTransacEmail(sendSmtpEmail);
 
     console.log("Email sent successfully ✅");
   } catch (error) {
-    console.error("Email sending failed ❌", error.message);
-    throw new Error("Email could not be sent");
+    console.error("Email failed ❌", error.response?.body || error.message);
+    throw new Error("Email sending failed");
   }
 };
 
