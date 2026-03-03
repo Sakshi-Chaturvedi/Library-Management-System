@@ -144,9 +144,21 @@ const logoutController = catchAsyncError(async (req, res, next) => {
     });
 });
 
+// ! <<<<<<<<<<<<<<<<------------- Get-User-Controller ----------->>>>>>>>>>>>>>>>>>>>>
+const getUserController = catchAsyncError(async (req, res, next) => {
+  const user = req.user;
+
+  res.status(200).json({
+    success: true,
+    message: "User profile fetched Successfully!",
+    user,
+  });
+});
+
 module.exports = {
   registerController,
   verifyOTP,
   loginController,
   logoutController,
+  getUserController
 };

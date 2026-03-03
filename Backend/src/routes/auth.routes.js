@@ -4,6 +4,7 @@ const {
   verifyOTP,
   loginController,
   logoutController,
+  getUserController,
 } = require("../controllers/auth.controller");
 const isAuthenticatedUser = require("../middlewares/auth");
 
@@ -20,5 +21,8 @@ authRouter.post("/login", loginController);
 
 // ! --------------- Logout API ------------------
 authRouter.get("/logout", isAuthenticatedUser, logoutController);
+
+// ! --------------- GetUserProfile API -------------
+authRouter.get("/profile",isAuthenticatedUser, getUserController);
 
 module.exports = authRouter;
