@@ -61,11 +61,7 @@ const registerController = catchAsyncError(async (req, res, next) => {
 // ! <<<<<<<<<<<<<<<---------------- Verify-OTP ------------------->>>>>>>>>>>>>>>>>>>>>>
 
 const verifyOTP = catchAsyncError(async (req, res, next) => {
-  console.log(req.body);
-
   const { email, phone, otp } = req.body;
-
-  console.log(typeof phone);
 
   if (!email || !phone || !otp) {
     return next(new ErrorHandler("All fields are required.", 400));
@@ -74,18 +70,12 @@ const verifyOTP = catchAsyncError(async (req, res, next) => {
   console.log("Step-1 Clear");
   const userEntries = await userModel.find({
     $or: [{ email }, { phone }],
-    accountVerified:false
-  })
+    accountVerified: false,
+  });
 
-  console.log(userEntries);
-
-  console.log("Step-2 Clear");
-  
   if (!userEntries || userEntries.length === 0) {
     return next(new ErrorHandler("User not Found", 400));
   }
-
-  console.log("Step-3 Clear");
 
   let user = userEntries[0];
 
@@ -106,7 +96,6 @@ const verifyOTP = catchAsyncError(async (req, res, next) => {
   if (Date.now() > new Date(user.verificationCodeExpire).getTime()) {
     return next(new ErrorHandler("OTP has been expired", 400));
   }
-  console.log("Step-4 Clear");
 
   user.verificationCode = null;
   user.accountVerified = true;
@@ -117,4 +106,26 @@ const verifyOTP = catchAsyncError(async (req, res, next) => {
   sendToken(user, 200, "Account Verified", res);
 });
 
-module.exports = { registerController, verifyOTP };
+// ! <<<<<<<<<<<--------------- Login-Controller ----------------->>>>>>>>>>>>>>>>>>>>
+const loginController = catchAsyncError(async (req, res, next) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return next(new ErrorHandler("All fields are required!", 400));
+  }
+
+  const isUserExist = await userModel
+    .findOne({
+      email,
+      accountVerified: true,
+    })
+    .select("+password");
+
+  if (!isUserExist) {
+    return next(new ErrorHandler("User not Found!", 400));
+  }
+
+  sendToken(isUserExist, 200, "User LoggedIn Successfully", res);
+});
+
+module.exports = { registerController, verifyOTP, loginController };
