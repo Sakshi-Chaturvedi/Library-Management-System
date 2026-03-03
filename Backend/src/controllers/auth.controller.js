@@ -128,4 +128,25 @@ const loginController = catchAsyncError(async (req, res, next) => {
   sendToken(isUserExist, 200, "User LoggedIn Successfully", res);
 });
 
-module.exports = { registerController, verifyOTP, loginController };
+// ! <<<<<<<<<<<<<<<------------- Logout-Controller --------------->>>>>>>>>>>>>>>>>>>
+const logoutController = catchAsyncError(async (req, res, next) => {
+  res
+    .status(200)
+    .cookie("token", "", {
+      expires: new Date(Date.now()),
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "none",
+    })
+    .json({
+      success: true,
+      message: "Logged out",
+    });
+});
+
+module.exports = {
+  registerController,
+  verifyOTP,
+  loginController,
+  logoutController,
+};
