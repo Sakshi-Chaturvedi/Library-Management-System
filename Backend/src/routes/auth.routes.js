@@ -5,6 +5,8 @@ const {
   loginController,
   logoutController,
   getUserController,
+  forgotPassController,
+  resetPasswordController,
 } = require("../controllers/auth.controller");
 const isAuthenticatedUser = require("../middlewares/auth");
 
@@ -23,6 +25,12 @@ authRouter.post("/login", loginController);
 authRouter.get("/logout", isAuthenticatedUser, logoutController);
 
 // ! --------------- GetUserProfile API -------------
-authRouter.get("/profile",isAuthenticatedUser, getUserController);
+authRouter.get("/profile", isAuthenticatedUser, getUserController);
+
+// ! -------------- Forgot-Password API -------------
+authRouter.post("/password/forgot", forgotPassController);
+
+// ! -------------- Reset-Password API --------------
+authRouter.put("/password/reset/:token", resetPasswordController);
 
 module.exports = authRouter;

@@ -1,8 +1,10 @@
 const catchAsyncError = require("../middlewares/catchAsyncError");
 const { ErrorHandler } = require("../middlewares/errorMiddleware");
 const userModel = require("../models/users.model");
+const sendEmail = require("../utils/sendEmail");
 const sendToken = require("../utils/sendToken");
 const sendVerificationCode = require("../utils/sendVerificationCode");
+const crypto = require("crypto");
 
 // ! <<<<<<<<<<<<<<<---------------- Register-Controller ----------------->>>>>>>>>>>>>>>>>>>>
 const registerController = catchAsyncError(async (req, res, next) => {
@@ -125,6 +127,12 @@ const loginController = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("User not Found!", 400));
   }
 
+  const isPasswordMatched = await isUserExist.comparePassword(password);
+
+  if (!isPasswordMatched) {
+    return next(new ErrorHandler("Invalid Email or Password!", 401));
+  }
+
   sendToken(isUserExist, 200, "User LoggedIn Successfully", res);
 });
 
@@ -155,10 +163,106 @@ const getUserController = catchAsyncError(async (req, res, next) => {
   });
 });
 
+// ! <<<<<<<<<<<<<<<<------------- Forgot-Password-Controller ----------->>>>>>>>>>>>>>>
+const forgotPassController = catchAsyncError(async (req, res, next) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return next(new ErrorHandler("Please enter your Email ID here : ", 400));
+  }
+
+  const isUser = await userModel.findOne({ email });
+ 
+  if (!isUser) {
+    return next(new ErrorHandler("User not Found", 400));
+  }
+
+  const resetToken = isUser.generateResetPasswordToken();
+
+
+  await isUser.save({ validateBeforeSave: false });
+
+
+  const resetPasswordURL = `${
+    process.env.FRONTEND_URL
+  }/password/reset/${resetToken}`;
+
+  const generateMsg = `Your Reset Password Token is:- \n\n ${resetPasswordURL} \n\n If you have not requested this email then please ignore it.`;
+
+
+  try {
+    sendEmail({
+      email,
+      subject: "LIBRARY MANAGEMENT APP RESET PASSWORD",
+      message: generateMsg,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Email sent to ${email} successfully.`,
+    });
+  } catch (error) {
+    isUser.resetPasswordToken = undefined;
+    isUser.resetPasswordExpire = undefined;
+
+    await isUser.save({ validateBeforeSave: false });
+
+    return next(
+      new ErrorHandler(
+        error.message ? error.message : "Cannot send reset password token.",
+        500,
+      ),
+    );
+  }
+});
+
+// ! <<<<<<<<<<<<------------ Reset-Password-Controller ---------------->>>>>>>>>>>>>>>>>
+const resetPasswordController = catchAsyncError(async (req, res, next) => {
+  const { token } = req.params;
+
+  if (!token) {
+    return next(new ErrorHandler("Unauthorized Request.", 400));
+  }
+
+  const resetPasswordToken = crypto
+    .createHash("sha256")
+    .update(token)
+    .digest("hex");
+
+  const r_user = await userModel.findOne({
+    resetPasswordToken,
+    resetPasswordExpire: { $gt: Date.now() },
+  });
+
+  if (!r_user) {
+    return next(
+      new ErrorHandler(
+        "Reset password token is invalid or has been expired.",
+        400,
+      ),
+    );
+  }
+
+  if (req.body.password !== req.body.confirmPassword) {
+    return next(
+      new ErrorHandler("Password & confirm password do not match.", 400),
+    );
+  }
+
+  r_user.password = req.body.password;
+  r_user.resetPasswordToken = undefined;
+  r_user.resetPasswordExpire = undefined;
+  await r_user.save();
+
+  sendToken(r_user, 200, "Reset Password Successfully.", res);
+});
+
 module.exports = {
   registerController,
   verifyOTP,
   loginController,
   logoutController,
-  getUserController
+  getUserController,
+  forgotPassController,
+  resetPasswordController,
 };
