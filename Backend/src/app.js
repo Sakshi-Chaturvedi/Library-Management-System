@@ -5,6 +5,7 @@ const cors = require("cors");
 const { errorMiddleware } = require("./middlewares/errorMiddleware");
 const authRouter = require("./routes/auth.routes");
 const bookRouter = require("./routes/book.routes");
+const borrowRoute = require("./routes/borrow.routes");
 
 const app = express();
 
@@ -41,6 +42,9 @@ app.use("/api/v1/auth", authRouter);
 
 // Book Routes
 app.use("/api/v1/book", bookRouter);
+
+// Borrow Routes
+app.use("/api/v1/book", borrowRoute);
 
 // --------------------
 // 🔹 404 Handler
