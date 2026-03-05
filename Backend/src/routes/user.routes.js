@@ -2,6 +2,7 @@ const express = require("express");
 const {
   getAllUsersController,
   registerAdmin,
+  getDashboardStats,
 } = require("../controllers/users.controller");
 const { isAuthenticatedUser, isAuthorized } = require("../middlewares/auth");
 
@@ -19,6 +20,13 @@ userRouter.post(
   isAuthenticatedUser,
   isAuthorized("admin"),
   registerAdmin,
+);
+
+userRouter.get(
+  "/dashboard-stats",
+  isAuthenticatedUser,
+  isAuthorized("admin"),
+  getDashboardStats,
 );
 
 module.exports = userRouter;

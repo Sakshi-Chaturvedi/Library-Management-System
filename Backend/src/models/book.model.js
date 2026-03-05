@@ -12,6 +12,14 @@ const bookSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    coverImage: {
+      public_id: {
+        type: String,
+      },
+      url: {
+        type: String,
+      },
+    },
     isbn: {
       type: String,
       required: true,
@@ -32,7 +40,7 @@ const bookSchema = new mongoose.Schema(
       min: 0,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 module.exports = mongoose.model("Books", bookSchema);

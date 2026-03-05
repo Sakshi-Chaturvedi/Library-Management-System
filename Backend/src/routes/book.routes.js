@@ -5,6 +5,7 @@ const {
   getAllBooksController,
   deleteBookController,
 } = require("../controllers/book.controller");
+const upload = require("../middlewares/multer");
 
 const bookRouter = express.Router();
 
@@ -13,7 +14,8 @@ bookRouter.post(
   "/addbook",
   isAuthenticatedUser,
   isAuthorized("admin"),
-  addBookController,
+  upload.single("image"),
+  addBookController
 );
 
 // ! ------------- Get All Books API ---------------

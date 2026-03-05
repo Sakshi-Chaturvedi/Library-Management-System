@@ -1,21 +1,52 @@
 const catchAsyncError = require("../middlewares/catchAsyncError");
 const { ErrorHandler } = require("../middlewares/errorMiddleware");
+const bookModel = require("../models/book.model");
+const borrowModel = require("../models/borrow.model");
 // const { ErrorHandler } = require("..middlewares/errorMiddleware");
 const userModel = require("../models/users.model");
 const sendVerificationCode = require("../utils/sendVerificationCode");
 
 // ! <<<<<<<<<<<<<---------------- Get-All-Users-Controller (Admin) ------------->>>>>>>>>>>>>
 const getAllUsersController = catchAsyncError(async (req, res, next) => {
-  const allUsers = await userModel.find();
+  const { keyword, role, page = 1, limit = 5 } = req.query;
 
-  if (!allUsers || allUsers.length === 0) {
-    return next(new ErrorHandler("No user Found in the DB!", 400));
+  const query = {};
+
+  // ? Search by username or email
+  if (keyword) {
+    query.$or = [
+      { username: { $regex: keyword, $options: "i" } },
+      { email: { $regex: keyword, $options: "i" } },
+    ];
+  }
+
+  // ? Filter by role
+  if (role) {
+    query.role = role;
+  }
+
+  const skip = (page - 1) * limit;
+
+  const users = await userModel
+    .find(query)
+    .select("-password")
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(Number(limit));
+
+  const totalUsers = await userModel.countDocuments(query);
+
+  if (!users || users.length === 0) {
+    return next(new ErrorHandler("No users found!", 404));
   }
 
   res.status(200).json({
     success: true,
-    message: "All users Fetched Successfully",
-    allUsers,
+    message: "Users fetched successfully",
+    totalUsers,
+    totalPages: Math.ceil(totalUsers / limit),
+    currentPage: Number(page),
+    users,
   });
 });
 
@@ -23,10 +54,12 @@ const getAllUsersController = catchAsyncError(async (req, res, next) => {
 const registerAdmin = catchAsyncError(async (req, res, next) => {
   const { username, email, password, phone, verificationMethod } = req.body;
 
+  // ? Check required fields
   if (!username || !email || !password || !phone || !verificationMethod) {
     return next(new ErrorHandler("All Fields are Required.", 400));
   }
 
+  // ? Check existing user
   const isUser = await userModel.findOne({
     $or: [{ email }, { phone }],
   });
@@ -35,6 +68,7 @@ const registerAdmin = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("User already exists.", 400));
   }
 
+  // ? Create admin
   const newAdmin = await userModel.create({
     username,
     email,
@@ -43,16 +77,46 @@ const registerAdmin = catchAsyncError(async (req, res, next) => {
     role: "admin",
   });
 
+  // ? Generate OTP
   const OTP = newAdmin.generateVerificationCode();
 
-  await newAdmin.save();
+  await newAdmin.save({ validateBeforeSave: false });
 
-  await sendVerificationCode(OTP, verificationMethod, email, phone);
+  // ? Send OTP
+  try {
+    await sendVerificationCode(OTP, verificationMethod, email, phone);
+  } catch (error) {
+    return next(new ErrorHandler("OTP could not be sent.", 500));
+  }
 
   res.status(201).json({
     success: true,
-    message: `OTP sent successfully on ${verificationMethod === "email" ? email : phone}`,
+    message: `OTP sent successfully on ${
+      verificationMethod === "email" ? email : phone
+    }`,
   });
 });
 
-module.exports = { getAllUsersController, registerAdmin };
+// ! <<<<<<<<<<<<---------------- Admin-Dashboard-Stats-Controller ------------->>>>>>>>>>>>>>>>>>
+const getDashboardStats = catchAsyncError(async (req, res, next) => {
+  const totalBooks = await bookModel.countDocuments();
+
+  const borrowedBooks = await borrowModel.countDocuments({
+    returned: false,
+  });
+
+  const activeUsers = await userModel.countDocuments({
+    role: "user",
+  });
+
+  res.status(200).json({
+    success: true,
+    stats: {
+      totalBooks,
+      borrowedBooks,
+      activeUsers,
+    },
+  });
+});
+
+module.exports = { getAllUsersController, registerAdmin, getDashboardStats };

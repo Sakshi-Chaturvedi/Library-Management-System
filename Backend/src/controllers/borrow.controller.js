@@ -13,11 +13,27 @@ const recordBorrowBook = catchAsyncError(async (req, res, next) => {
 
   const Book = await bookModel.findById(bookID);
 
-  if (!Book || Book.availableCopies === 0) {
-    return next(new ErrorHandler("Book not Available", 400));
+  if (!Book) {
+    return next(new ErrorHandler("Book not found", 404));
+  }
+
+  if (Book.availableCopies <= 0) {
+    return next(new ErrorHandler("Book not available", 400));
   }
 
   Book.availableCopies -= 1;
+
+  await Book.save();
+
+  const alreadyBorrowed = await borrowModel.findOne({
+    user: req.user._id,
+    book: bookID,
+    returned: false,
+  });
+
+  if (alreadyBorrowed) {
+    return next(new ErrorHandler("You already borrowed this book", 400));
+  }
 
   const borrow = await borrowModel.create({
     user: req.user._id,
@@ -31,13 +47,15 @@ const recordBorrowBook = catchAsyncError(async (req, res, next) => {
   });
 });
 
-
-
 const returnBorrowBook = catchAsyncError(async (req, res, next) => {
   const borrow = await borrowModel.findById(req.params.id);
 
-  if (!borrow || borrow.returned) {
-    return next(new ErrorHandler("Invalid Borrow Record", 400));
+  if (!borrow) {
+    return next(new ErrorHandler("Borrow record not found", 404));
+  }
+
+  if (borrow.returned) {
+    return next(new ErrorHandler("Book already returned", 400));
   }
 
   const returnDate = new Date();
@@ -65,7 +83,9 @@ const returnBorrowBook = catchAsyncError(async (req, res, next) => {
 });
 
 const borrowedBooks = catchAsyncError(async (req, res, next) => {
-  const borrows = await borrowModel.find({ user: req.user._id }).populate("book");
+  const borrows = await borrowModel
+    .find({ user: req.user._id })
+    .populate("book");
 
   res.status(200).json({
     success: true,
@@ -73,4 +93,36 @@ const borrowedBooks = catchAsyncError(async (req, res, next) => {
   });
 });
 
-module.exports = { recordBorrowBook, returnBorrowBook, borrowedBooks };
+const payFineController = catchAsyncError(async (req, res, next) => {
+  const borrow = await borrowModel.findById(req.params.id);
+
+  if (!borrow) {
+    return next(new ErrorHandler("Borrow record not found", 404));
+  }
+
+  if (borrow.fine === 0) {
+    return next(new ErrorHandler("No fine to pay", 400));
+  }
+
+  if (borrow.finePaid) {
+    return next(new ErrorHandler("Fine already paid", 400));
+  }
+
+  borrow.finePaid = true;
+  borrow.paymentDate = new Date();
+
+  await borrow.save();
+
+  res.status(200).json({
+    success: true,
+    message: "Fine paid successfully",
+    borrow,
+  });
+});
+
+module.exports = {
+  recordBorrowBook,
+  returnBorrowBook,
+  borrowedBooks,
+  payFineController,
+};

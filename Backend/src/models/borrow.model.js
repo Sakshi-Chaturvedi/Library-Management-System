@@ -23,12 +23,18 @@ const borrowSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    finePaid: {
+      type: Boolean,
+      default: false,
+    },
+    paymentDate: {
+      type: Date,
+    },
     returned: {
       type: Boolean,
       default: false,
     },
   },
-  { timestamps: true },
+  { timestamps: true }
 );
-
 module.exports = mongoose.model("BorrowedBooks", borrowSchema);
