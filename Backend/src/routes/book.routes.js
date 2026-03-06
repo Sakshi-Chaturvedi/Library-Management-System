@@ -4,6 +4,7 @@ const {
   addBookController,
   getAllBooksController,
   deleteBookController,
+  getOverdueBooks,
 } = require("../controllers/book.controller");
 const upload = require("../middlewares/multer");
 
@@ -15,7 +16,7 @@ bookRouter.post(
   isAuthenticatedUser,
   isAuthorized("admin"),
   upload.single("image"),
-  addBookController
+  addBookController,
 );
 
 // ! ------------- Get All Books API ---------------
@@ -28,5 +29,14 @@ bookRouter.delete(
   isAuthorized("admin"),
   deleteBookController,
 );
+
+// ! ----------------- OverDue-Books API ----------------
+bookRouter.get(
+  "/overdueBooks",
+  isAuthenticatedUser,
+  isAuthorized("admin"),
+  getOverdueBooks,
+);
+
 
 module.exports = bookRouter;

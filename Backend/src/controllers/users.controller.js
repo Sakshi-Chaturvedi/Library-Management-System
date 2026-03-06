@@ -98,25 +98,33 @@ const registerAdmin = catchAsyncError(async (req, res, next) => {
 });
 
 // ! <<<<<<<<<<<<---------------- Admin-Dashboard-Stats-Controller ------------->>>>>>>>>>>>>>>>>>
-const getDashboardStats = catchAsyncError(async (req, res, next) => {
+const getAdminAnalytics = catchAsyncError(async (req, res, next) => {
   const totalBooks = await bookModel.countDocuments();
 
-  const borrowedBooks = await borrowModel.countDocuments({
-    returned: false,
-  });
-
-  const activeUsers = await userModel.countDocuments({
+  const totalUsers = await userModel.countDocuments({
     role: "user",
   });
 
+  const totalBorrows = await borrowModel.countDocuments();
+
+  const totalFines = await borrowModel.aggregate([
+    {
+      $group: {
+        _id: null,
+        totalFine: { $sum: "$fine" },
+      },
+    },
+  ]);
+
   res.status(200).json({
     success: true,
-    stats: {
+    analytics: {
       totalBooks,
-      borrowedBooks,
-      activeUsers,
+      totalUsers,
+      totalBorrows,
+      totalFineCollected: totalFines[0]?.totalFine || 0,
     },
   });
 });
 
-module.exports = { getAllUsersController, registerAdmin, getDashboardStats };
+module.exports = { getAllUsersController, registerAdmin, getAdminAnalytics };

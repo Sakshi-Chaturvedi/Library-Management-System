@@ -1,12 +1,13 @@
 const catchAsyncError = require("../middlewares/catchAsyncError");
 const { ErrorHandler } = require("../middlewares/errorMiddleware");
 const bookModel = require("../models/book.model");
+const borrowModel = require("../models/borrow.model");
 const cloudinary = require("cloudinary").v2;
 
 // ! <<<<<<<<<<<<-------------- Add-Books-Controller --------------->>>>>>>>>>>
 const addBookController = catchAsyncError(async (req, res, next) => {
   console.log(req.file);
-  
+
   const { title, author, isbn, category, totalCopies, availableCopies } =
     req.body;
 
@@ -37,7 +38,6 @@ const addBookController = catchAsyncError(async (req, res, next) => {
   });
 
   console.log(uploadedImage.secure_url);
-  
 
   const book = await bookModel.create({
     title,
@@ -98,6 +98,7 @@ const getAllBooksController = catchAsyncError(async (req, res, next) => {
   });
 });
 
+
 // ! <<<<<<<<<<<<<------------- Delete-Book-Controller ------------->>>>>>>>>>>>>>
 const deleteBookController = catchAsyncError(async (req, res, next) => {
   const book = await bookModel.findById(req.params.id);
@@ -119,10 +120,29 @@ const deleteBookController = catchAsyncError(async (req, res, next) => {
   });
 });
 
-module.exports = { deleteBookController };
+// ! <<<<<<<<<<<<<------------ Get-OverDue-Books-API -------------->>>>>>>>>>>>>>>
+const getOverdueBooks = catchAsyncError(async (req, res, next) => {
+  const today = new Date();
+
+  const overdueBooks = await borrowModel
+    .find({
+      returned: false,
+      dueDate: { $lt: today },
+    })
+    .populate("user", "username email")
+    .populate("book", "title author");
+
+  res.status(200).json({
+    success: true,
+    overdueBooks,
+  });
+});
+
+// module.exports = { deleteBookController };
 
 module.exports = {
   addBookController,
   getAllBooksController,
   deleteBookController,
+  getOverdueBooks,
 };
