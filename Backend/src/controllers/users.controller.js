@@ -34,6 +34,16 @@ const getAllUsersController = catchAsyncError(async (req, res, next) => {
     .skip(skip)
     .limit(Number(limit));
 
+  const usersWithBorrowCount = await Promise.all(
+    users.map(async (user) => {
+      const totalBorrowedBooks = await borrowModel.countDocuments({ user: user._id });
+      return {
+        ...user.toObject(),
+        totalBorrowedBooks,
+      };
+    })
+  );
+
   const totalUsers = await userModel.countDocuments(query);
 
   if (!users || users.length === 0) {
@@ -46,7 +56,7 @@ const getAllUsersController = catchAsyncError(async (req, res, next) => {
     totalUsers,
     totalPages: Math.ceil(totalUsers / limit),
     currentPage: Number(page),
-    users,
+    users: usersWithBorrowCount,
   });
 });
 

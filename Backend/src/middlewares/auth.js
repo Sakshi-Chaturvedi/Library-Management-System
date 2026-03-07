@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken");
 
 // ✅ Authentication Middleware
 exports.isAuthenticatedUser = catchAsyncError(async (req, res, next) => {
-  const token = req.cookies?.token;
+  const token = req.cookies?.token || (req.headers.authorization && req.headers.authorization.split(" ")[1]);
 
   if (!token) {
     return next(new ErrorHandler("User is not Authenticated", 401));

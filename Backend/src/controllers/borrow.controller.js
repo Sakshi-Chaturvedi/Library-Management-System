@@ -21,10 +21,6 @@ const recordBorrowBook = catchAsyncError(async (req, res, next) => {
     return next(new ErrorHandler("Book not available", 400));
   }
 
-  Book.availableCopies -= 1;
-
-  await Book.save();
-
   const alreadyBorrowed = await borrowModel.findOne({
     user: req.user._id,
     book: bookID,
@@ -34,6 +30,11 @@ const recordBorrowBook = catchAsyncError(async (req, res, next) => {
   if (alreadyBorrowed) {
     return next(new ErrorHandler("You already borrowed this book", 400));
   }
+
+  Book.availableCopies -= 1;
+  Book.borrowCount = (Book.borrowCount || 0) + 1;
+
+  await Book.save();
 
   const borrow = await borrowModel.create({
     user: req.user._id,
@@ -93,6 +94,21 @@ const borrowedBooks = catchAsyncError(async (req, res, next) => {
   });
 });
 
+const getBorrowHistoryController = catchAsyncError(async (req, res, next) => {
+  const query = req.user.role === "admin" ? {} : { user: req.user._id };
+
+  const history = await borrowModel
+    .find(query)
+    .populate("user", "username email")
+    .populate("book")
+    .sort({ borrowDate: -1 });
+
+  res.status(200).json({
+    success: true,
+    history,
+  });
+});
+
 const payFineController = catchAsyncError(async (req, res, next) => {
   const borrow = await borrowModel.findById(req.params.id);
 
@@ -124,5 +140,6 @@ module.exports = {
   recordBorrowBook,
   returnBorrowBook,
   borrowedBooks,
+  getBorrowHistoryController,
   payFineController,
 };

@@ -59,17 +59,44 @@ const addBookController = catchAsyncError(async (req, res, next) => {
   });
 });
 
+// ! <<<<<<<<<<<<-------------- Get Recently Added Books --------------->>>>>>>>>>>>>>>
+const getRecentlyAddedBooksController = catchAsyncError(async (req, res, next) => {
+  const books = await bookModel
+    .find()
+    .sort({ createdAt: -1 })
+    .limit(5);
+
+  res.status(200).json({
+    success: true,
+    recentBooks: books,
+  });
+});
+
+// ! <<<<<<<<<<<<-------------- Get Trending Books --------------->>>>>>>>>>>>>>>
+const getTrendingBooksController = catchAsyncError(async (req, res, next) => {
+  const books = await bookModel
+    .find()
+    .sort({ borrowCount: -1 })
+    .limit(5);
+
+  res.status(200).json({
+    success: true,
+    trendingBooks: books,
+  });
+});
+
 // ! <<<<<<<<<<<<-------------- Get All Books --------------->>>>>>>>>>>>>>>>>>>
 const getAllBooksController = catchAsyncError(async (req, res, next) => {
   const { keyword, category, page = 1, limit = 5 } = req.query;
 
   const query = {};
 
-  // ? Search by title or author
+  // ? Search by title or author or category
   if (keyword) {
     query.$or = [
       { title: { $regex: keyword, $options: "i" } },
       { author: { $regex: keyword, $options: "i" } },
+      { category: { $regex: keyword, $options: "i" } },
     ];
   }
 
@@ -98,6 +125,21 @@ const getAllBooksController = catchAsyncError(async (req, res, next) => {
   });
 });
 
+
+// ! <<<<<<<<<<<<-------------- Get Book by ID --------------->>>>>>>>>>>>>>>>>>>
+const getBookByIdController = catchAsyncError(async (req, res, next) => {
+  const book = await bookModel.findById(req.params.id);
+
+  if (!book) {
+    return next(new ErrorHandler("Book Not Found", 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "Book fetched successfully",
+    book,
+  });
+});
 
 // ! <<<<<<<<<<<<<------------- Delete-Book-Controller ------------->>>>>>>>>>>>>>
 const deleteBookController = catchAsyncError(async (req, res, next) => {
@@ -140,9 +182,87 @@ const getOverdueBooks = catchAsyncError(async (req, res, next) => {
 
 // module.exports = { deleteBookController };
 
+// ! <<<<<<<<<<<<<------------- Update-Book-Controller ------------->>>>>>>>>>>>>>
+const updateBookController = catchAsyncError(async (req, res, next) => {
+  let book = await bookModel.findById(req.params.id);
+
+  if (!book) {
+    return next(new ErrorHandler("Book Not Found", 404));
+  }
+
+  const { title, author, isbn, category, totalCopies, availableCopies } = req.body;
+
+  let updateData = {
+    title,
+    author,
+    isbn,
+    category,
+    totalCopies,
+    availableCopies,
+  };
+
+  if (req.file) {
+    // delete previous image from cloudinary
+    if (book.coverImage?.public_id) {
+      await cloudinary.uploader.destroy(book.coverImage.public_id);
+    }
+
+    // upload new image
+    const uploadedImage = await cloudinary.uploader.upload(req.file.path, {
+      folder: "library_books",
+    });
+
+    updateData.coverImage = {
+      public_id: uploadedImage.public_id,
+      url: uploadedImage.secure_url,
+    };
+  }
+
+  book = await bookModel.findByIdAndUpdate(req.params.id, updateData, {
+    new: true,
+    runValidators: true,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Book Updated Successfully",
+    book,
+  });
+});
+
+// ! <<<<<<<<<<<<<-------------- Get Recommended Books ------------->>>>>>>>>>>>>>
+const getRecommendedBooksController = catchAsyncError(async (req, res, next) => {
+  // 1. Get user borrows
+  const userBorrows = await borrowModel.find({ user: req.user._id }).populate("book");
+
+  // 2. Extract categories
+  const categories = Array.from(new Set(
+    userBorrows.map((record) => record.book?.category).filter(Boolean)
+  ));
+
+  // 3. Extract IDs of already borrowed books
+  const borrowedBookIds = userBorrows.map((record) => record.book?._id).filter(Boolean);
+
+  // 4. Query recommendation (same categories, exclude already borrowed)
+  const recommendations = await bookModel.find({
+    category: { $in: categories },
+    _id: { $nin: borrowedBookIds }
+  }).limit(5);
+
+  res.status(200).json({
+    success: true,
+    recommendedBooks: recommendations
+  });
+});
+
 module.exports = {
   addBookController,
   getAllBooksController,
+  getBookByIdController,
+  getTrendingBooksController,
+  getRecentlyAddedBooksController,
+  getRecommendedBooksController,
+  updateBookController,
   deleteBookController,
   getOverdueBooks,
 };

@@ -39,6 +39,10 @@ const bookSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
+    borrowCount: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true },
 );
