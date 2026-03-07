@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api/v1/"
+  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000",
+  withCredentials: true
 });
 
 // Request interceptor to attach JWT token
@@ -13,11 +14,10 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
+// Response interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
